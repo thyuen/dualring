@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[320]:
-
 
 import os
 import secrets
@@ -17,17 +15,12 @@ from fastecdsa import keys, curve, ecdsa
 from hashlib import sha256, sha512, sha384
 
 
-# In[307]:
-
 
 # define basic parameter
 my_curve = curve.P256
 g = my_curve.G
 p = my_curve.q
 generator_u = g * secrets.randbelow(p)
-
-
-# In[334]:
 
 
 # define basic operation
@@ -49,24 +42,15 @@ def V_z(z, pk, c):
     return (g*z) + (pk*c)
 
 
-# In[4]:
-
-
 # setup function, not actually called since parameter are already defined
 def Setup(parameter):
     return parameter, hash
-
-
-# In[5]:
 
 
 # key generation calling ecc keyGen
 def KeyGen():
 #     sk is before pk
     return keys.gen_keypair(my_curve)
-
-
-# In[6]:
 
 
 # converting a ecc point to string form: taking its x and y coodinates
@@ -76,50 +60,34 @@ def pt_to_string(point):
     return a + b
 
 
-# In[335]:
-
-
 # algorithm 1
 # not for ring signature
 def SIGN(m, sk):
     r = secrets.randbelow(p)
     R = A(r)
-#     print('R ', R)
     my_string = m + pt_to_string(R)
-#     print('my_string ', my_string)
     c = sha256(my_string.encode()).hexdigest()
-#     print('c', c)
     z = Z(sk,r,c)
-#     print('z', z)
     return z, c
 
 def VERIFY(m, pk, sigma):
     z = sigma[0]
     c = sigma[1]
     R_prime = V_z(z, pk, c)
-#     print('R prime ', R_prime)
     my_string = m + pt_to_string(R_prime)
-#     print('my_string ', my_string)
     x = sha256(my_string.encode()).hexdigest()
-#     print('x', x)
     if c != sha256(my_string.encode()).hexdigest():
         return 0
     return 1
 
 
-# In[9]:
-
-
 for i in range (100):
     sk_temp, pk_temp = KeyGen()
-#     print('sk: %s\npk: %s' %(sk_temp, pk_temp))
     s = SIGN("i am ", sk_temp)
     if (VERIFY("i am ", pk_temp, s) == 0):
         print("failed")
         break
 
-
-# In[10]:
 
 
 # helper method to convert a list of numbers to a string
@@ -129,9 +97,6 @@ def list_to_string(l):
         a = a + str(l[i])
 ############################################# set a = hash(a) before returning it #######  
    return a
-
-
-# In[342]:
 
 
 # algorithm 2
@@ -146,14 +111,12 @@ def Sign(m, PK, sk, j):
     z_array = [None] * len(PK)
     R_array[j] = A(r)
     for i in range (j + 1, len(PK)):
-#         print('at 1')
         my_string = m + universal_pk_string + pt_to_string(R_array[i - 1])
         c_array[i] = sha256(my_string.encode()).hexdigest()
         z_array[i] = secrets.randbelow(p)
         R_array[i] = V_z(z_array[i], PK[i], c_array[i])
     for ii in range (0, j):
 ######################################## why is it range from 0 to j, not 0 to j-1? Is it correct ######
-#         print('at 2')
         if ii == 0:
             my_string = m + universal_pk_string + pt_to_string(R_array[len(PK) - 1])
             c_array[ii] = sha256(my_string.encode()).hexdigest()
@@ -165,12 +128,9 @@ def Sign(m, PK, sk, j):
     this_string = m + universal_pk_string + pt_to_string(R_array[j - 1])
     c_array[j] = sha256(this_string.encode()).hexdigest()
     z_array[j] = Z(sk, r, c_array[j])
-#     print('c_array ', c_array)
-#     print('z_array ', z_array)
     return (c_array[0], z_array)
 
 
-# In[345]:
 
 
 def Verify(m, PK, sigma):
@@ -184,20 +144,14 @@ def Verify(m, PK, sigma):
     for i in range (1, n):
         my_string = m + universal_pk_string + pt_to_string(R_array[i - 1])
         temp_c = sha256(my_string.encode()).hexdigest()
-#         R[i] = V(PK[i], z_array[i], R_array[i - 1])
-#         print('temp_c', type(temp_c))
         R_array[i] = V_z(z_array[i], PK[i], temp_c)
     compare_string = m + universal_pk_string + pt_to_string(R_array[n - 1])
     d = sha256(compare_string.encode()).hexdigest()
-#     print('c = ', c)
-#     print('d = ', d)
     if c != d:
         print('algo 2 sign failed')
         return 0
     return 1
 
-
-# In[13]:
 
 
 # testing
@@ -214,12 +168,9 @@ for ii in range (0, 20):
         print ("failed")
 
 
-# In[310]:
-
 
 # Algorithm 4
 def basic_sign(m, pk_list, sk, j):
-#     start_time = time.time()
     r = secrets.randbelow(p)
     c_array = [None] * len(pk_list)
     universal_pk_string = list_to_string(pk_list)
@@ -229,7 +180,6 @@ def basic_sign(m, pk_list, sk, j):
         if i == j:
             continue
         temp_c = secrets.randbelow(p)
-#         print('temp c ', temp_c)
         c_array[i] = temp_c
         R = R + (pk_list[i]* temp_c)
         summation_except_j = (summation_except_j + temp_c) 
@@ -239,16 +189,12 @@ def basic_sign(m, pk_list, sk, j):
 #     with mod p won't work
     c_array[j] = (C_number - summation_except_j) % p
     z = Z1(sk,r,c_array[j])
-#     print('basic sign time elaspsed ', time.time() - start_time)
     
 #     testing time
 #     log_2_len = int(log2(len(pk_list)))
 #     basic_sign_time[log_2_len] = time.time() - start_time
     
     return c_array, z, C_number, R
-
-
-# In[311]:
 
 
 def basic_verify(m, pk_list, sigma):
@@ -261,8 +207,6 @@ def basic_verify(m, pk_list, sigma):
         R = R + (pk_list[i]* c_array[i])
     my_string = m + universal_pk_string + pt_to_string(R)
     result = (int(sha256(my_string.encode()).hexdigest(), 16)) % p
-#     print('sum', sum(c_array))
-#     print('result', result)
     if (sum(c_array)) % p != result:
         print("basic verify failed")
         return 0
@@ -272,9 +216,6 @@ def basic_verify(m, pk_list, sigma):
 #     log_2_len = int(log2(len(pk_list)))
 #     basic_verify_time[log_2_len] = time.time() - start_time
     return 1
-
-
-# In[16]:
 
 
 PK_num = 20
@@ -290,8 +231,6 @@ for ii in range (0, 20):
         print ("failed")
 
 
-# In[281]:
-
 
 power_of_2 = 10
 PK_num = 2 ** power_of_2
@@ -305,15 +244,10 @@ for ii in range (time_trail):
     start_time = time.time()
     random_position = secrets.randbelow(PK_num)
     my_sk, fake_PK[random_position] = ssk, ppk
-#     print("fake pk list", fake_PK)
-#     print('my sk', my_sk)
-#     print('pos', random_position)
     hh = basic_sign("foo", fake_PK, my_sk, random_position)
     basic_verify("foo", fake_PK, hh)
     print('total time elaspsed ', time.time() - start_time)
 
-
-# In[293]:
 
 
 # pk_list: public key list
@@ -322,7 +256,6 @@ for ii in range (time_trail):
 # a: list of all c in algorithm 4
 # algorithm 6
 def P_proof(pk_list, this_u, P, b, a, L, R):
-#     print('\n\n\nP_proof stage\n\n\n')
 #     start_time = time.time()
     n = len(a)
 #     additional check
@@ -335,36 +268,25 @@ def P_proof(pk_list, this_u, P, b, a, L, R):
 #     c_L and c_R should be two scalars
     c_L = 0
     c_R = 0
-#     print('a', a)
-#     print('b', b)
     for i in range (n_prime):
         c_R += a[n_prime + i] * b[i]
         c_L += a[i] * b[n_prime + i]
-#     print('p', p)
     c_L = c_L % p
     c_R = c_R % p
 #     lose digits ?
-#     print('c_L', c_L)
-#     print('c_R', c_R)
     
 #     my_L and my_R should be two pts on ECC
     my_L = this_u * c_L
     my_R = this_u * c_R
-#     print("this u:", this_u)
-#     print('u * c_L', my_L)
-#     print('u * c_R', my_R)
-    
+
 #     print('stage 1 time: ', time.time() - start_time)
 #     start_time = time.time()
     
     for ii in range (n_prime):
-#         added:
         my_L = my_L + (pk_list[n_prime + ii] * a[ii])
         my_R = my_R + (pk_list[ii] * a[n_prime + ii])
     L.append(my_L)
     R.append(my_R)
-#     print('L', L)
-#     print('R', R)
     my_string = pt_to_string(my_L) + pt_to_string(my_R)
     
 #     print('stage 2 time: ', time.time() - start_time)
@@ -387,10 +309,6 @@ def P_proof(pk_list, this_u, P, b, a, L, R):
     for iii in range (n_prime):
         pk_prime_list[iii] = pk_list[iii] * x_inverse + pk_list[n_prime + iii] * x
         a_prime_list[iii] = (x * a[iii] + x_inverse * a[n_prime + iii]) % p
-#     print('pk_prime_list', pk_prime_list)
-#     print('b_prime_list', b_prime_list)
-#     print('a_prime_list', a_prime_list)
-
 #     print('stage 3 time: ', time.time() - start_time)
 #     start_time = time.time()
     
@@ -406,13 +324,10 @@ def P_proof(pk_list, this_u, P, b, a, L, R):
 #     print('stage 4 time: ', time.time() - start_time)
 #     start_time = time.time()
     
-#     print("P_prime", P_prime)
     
 #     recursion
     return P_proof(pk_prime_list, this_u, P_prime, b_prime_list, a_prime_list, L, R)
 
-
-# In[294]:
 
 
 # helper method to check if (i -1)'s jth bit is a 1
@@ -423,24 +338,17 @@ def check_bit(i, j):
     return -1
 
 
-# In[295]:
 
 
 # b: at first a list of 1s
 # c is the summation of ci in algorithm 4
 # pi: the returned product from P
 def V(pk_list, this_u, P, pi):
-#     print('pi', pi)
     L = pi[0]
     R = pi[1]
     a = pi[2][0]
     b = pi[3][0]
-#     print("\n\n\n\n\nVerify Stage\n\n\n\n\n")
-#     print('L', L)
-#     print('R', R)
-#     print('a', a)
-#     print('b', b)
-#     print('c', c)
+
     original_length = len(pk_list)
     log_length = int(log2(original_length))
     x_list = [None] * log_length
@@ -448,10 +356,8 @@ def V(pk_list, this_u, P, pi):
     for i in range (log_length):
         my_string = pt_to_string(L[i]) + pt_to_string(R[i])
         x_list[i] = int(sha256(my_string.encode()).hexdigest(), 16)
-#     print('x_list', x_list)
     y_list = [None] * original_length
 #     y is a list of numbers 
-#     print('x_list', x_list)
     for ii in range (original_length):
         product = 1
         for iii in range (log_length):
@@ -461,29 +367,21 @@ def V(pk_list, this_u, P, pi):
                 inverse = mod_inverse(x_list[log_length - iii - 1], p)
                 product = (product * inverse)
         y_list[ii] = product
-#     print('y_list', y_list)
     g_prime = pk_list[0] * y_list[0]
 #     h_prime = hash_list[0] * mod_inverse(y_list[0], p)
-#     print('g_prime before', g_prime)
     for iv in range (1, original_length):
         g_prime = g_prime + (pk_list[iv] * y_list[iv])
         y_inverse = mod_inverse(y_list[iv], p)
-#     print('g_prime after', g_prime)
     left_check = P
     for v in range (log_length):
         left_check = left_check + (L[v] * ((x_list[v] ** 2) % p))
 ######################## (x_list[v] ** 2) % p is computed twice. Should store it in a variable and reuse it ##########
         left_check = left_check + (R[v] * mod_inverse(x_list[v]**2, p))
-#     print('left check', left_check)
 ######################## right_check = (g_prime + this_u * b) * a    should reduce one multiplication #######
     right_check = g_prime * a + this_u * a * b
-#     print('right check', right_check)
     if left_check == right_check:
         return 1
     return 0
-
-
-# In[296]:
 
 
 # P: a point on ECC
@@ -491,24 +389,12 @@ def V(pk_list, this_u, P, pi):
 def NISA_Proof(pk_list, P, c, a):
     P_prime = P + generator_u * c
     b = [1] * len(a)
-#     print("\n\n\nNISA PROOF STAGE\n\n\n")
-#     print('NISA_PROOF P_prime', P_prime)
-#     print('b', b)
-#     print('a', a)
-#     print('c', c)
     return P_proof(pk_list, generator_u, P_prime, b, a, [], [])
-
-
-# In[297]:
 
 
 def NISA_Verify(pk_list, P, c, pi):
     P_prime = P + generator_u * c
-#     print('NISA_VERIFY P_prime:', P_prime)
     return V(pk_list, generator_u, P_prime, pi)
-
-
-# In[303]:
 
 
 def full_Sign(m, pk_list, sk, j):
@@ -520,21 +406,12 @@ def full_Sign(m, pk_list, sk, j):
     R = sigma[3]
     P = R + (g * z) * -1
     pi = NISA_Proof(pk_list, P, c, c_array)
-#     print('sign time elaspsed ', time.time() - start_time)
-#     print('\n\n\n FULL_SIGN STAGE\n\n\n')
-#     print('P for the R + (g * z) * -1:', P)
     product = pk_list[0] * c_array[0]
     for i in range (len(pk_list) - 1):
         product = product + pk_list[i + 1] * c_array[i + 1]
-#     print('Product of pk_list and Ci is ', product)
 # P is not actually needed but just for the test sake
-#     print('c_array', c_array)
-#     print(c)
     print('sign time elaspsed ', time.time() - start_time)
     return c, z, R, pi, P
-
-
-# In[331]:
 
 
 def full_Verify(m, pk_list, sigma):
@@ -550,14 +427,11 @@ def full_Verify(m, pk_list, sigma):
     my_string = m + list_to_string(pk_list) + pt_to_string(R)
     check = int(sha256(my_string.encode()).hexdigest(), 16)
     if c == check:
-#         print('YOU PASSED!')
         print('verify time elaspsed ', time.time() - start_time)
         return 1
     print("other check failed")
     return 0
 
-
-# In[351]:
 
 
 # testing 
@@ -583,9 +457,6 @@ for power in range (12):
         start_time = time.time()
         random_position = secrets.randbelow(PK_num)
         my_sk, fake_PK[random_position] = ssk, ppk
-    #     print("fake pk list", fake_PK)
-    #     print('my sk', my_sk)
-    #     print('pos', random_position)
     
 #     full sign part time record
         full_sign_time = time.time()
@@ -594,7 +465,6 @@ for power in range (12):
         full_verify_time = time.time()
         full_Verify("foo", fake_PK, hh)
         full_verify_time_list.append(time.time() - full_verify_time)
-#         print('total time elaspsed ', time.time() - start_time)
         full_entire_time_list.append(time.time() - start_time)
     
 #     basic sign part time record
@@ -618,8 +488,6 @@ for power in range (12):
         algo2_entire_time_list.append(time.time() - start_time)
 
 
-# In[346]:
-
 
 # more testing
 algo2_sign_time_list = []
@@ -639,9 +507,6 @@ for power in range (12):
         start_time = time.time()
         random_position = secrets.randbelow(PK_num)
         my_sk, fake_PK[random_position] = ssk, ppk
-    #     print("fake pk list", fake_PK)
-    #     print('my sk', my_sk)
-    #     print('pos', random_position)
 #       algorithm 2 sign part time record
         start_time = time.time()
         algo2_sign_time = time.time()
@@ -652,8 +517,6 @@ for power in range (12):
         algo2_verify_time_list.append(time.time() - algo2_verify_time)
         algo2_entire_time_list.append(time.time() - start_time)
 
-
-# In[347]:
 
 
 print(basic_sign_time_list)
@@ -667,7 +530,6 @@ print(algo2_verify_time_list)
 print(algo2_entire_time_list)
 
 
-# In[352]:
 
 
 # writing to file
@@ -678,10 +540,3 @@ with open("Ring Signature Time Analysis.txt", "w") as text_file:
                                                          algo2_entire_time_list[i], basic_sign_time_list[i], basic_verify_time_list[i],
                                                          basic_entire_time_list[i], full_sign_time_list[i],
                                                          full_verify_time_list[i], full_entire_time_list[i]))
-
-
-# In[ ]:
-
-
-
-
